@@ -63,8 +63,6 @@ export default function Page() {
         return;
       }
 
-      (window as any).ethereum = provider;
-
       await provider.request({ method: "eth_requestAccounts" });
 
       await ensureBase(provider);
