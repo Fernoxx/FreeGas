@@ -7,5 +7,5 @@ export const config = createConfig({
   connectors: [
     injected({ shimDisconnect: true }),
   ],
-  transports: { [base.id]: http("https://base-mainnet.g.alchemy.com/v2/imwS2Zh4ezDWuQm1A1mFO") },
+  transports: { [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC || "https://base-mainnet.g.alchemy.com/v2/imwS2Zh4ezDWuQm1A1mFO") },
 });

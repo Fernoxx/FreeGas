@@ -44,7 +44,7 @@ export default function Page() {
             chainId: "0x2105",
             chainName: "Base",
             nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-            rpcUrls: ["https://base-mainnet.g.alchemy.com/v2/imwS2Zh4ezDWuQm1A1mFO"],
+            rpcUrls: [process.env.NEXT_PUBLIC_BASE_RPC || "https://base-mainnet.g.alchemy.com/v2/imwS2Zh4ezDWuQm1A1mFO"],
             blockExplorerUrls: ["https://basescan.org"],
           }],
         });
