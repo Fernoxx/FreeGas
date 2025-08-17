@@ -35,12 +35,15 @@ async function exchangeToken(code: string, verifier: string) {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const { code, state } = req.query as { code: string; state: string };
+    const code = (req.query.code as string) || (req.body?.code as string);
+    const state = (req.query.state as string) || (req.body?.state as string);
+    if (!code || !state) throw new Error("missing code or state");
     const cookies = Object.fromEntries(
       (req.headers.cookie || "").split(";").map((s) => s.trim().split("="))
     );
 
     if (!cookies.tw_state || state !== cookies.tw_state) throw new Error("bad state");
+    if (!cookies.tw_verifier) throw new Error("missing verifier cookie");
 
     const tok = await exchangeToken(code, cookies.tw_verifier);
     let twitterId: string | undefined;
@@ -64,10 +67,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       "0x" +
       crypto.createHash("sha256").update(`${twitterId}:${process.env.TW_SALT!}`).digest("hex");
 
+    const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
     res.setHeader("Set-Cookie", [
-      `tw_hash=${twHash}; HttpOnly; Path=/; SameSite=Lax`,
-      "tw_state=; Path=/; Max-Age=0",
-      "tw_verifier=; Path=/; Max-Age=0",
+      `tw_hash=${twHash}; HttpOnly; Path=/; SameSite=Lax${secure}`,
+      `tw_state=; Path=/; Max-Age=0${secure}`,
+      `tw_verifier=; Path=/; Max-Age=0${secure}`,
     ]);
 
     res.redirect("/");
