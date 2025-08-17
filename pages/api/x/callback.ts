@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
+import OAuth from "oauth-1.0a";
 
 async function exchangeToken(code: string, verifier: string) {
   const body = new URLSearchParams({
@@ -35,13 +36,45 @@ async function exchangeToken(code: string, verifier: string) {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    const cookies = Object.fromEntries((req.headers.cookie || "").split(";").map((s) => s.trim().split("=")));
+    // OAuth 1.0a branch
+    if (req.query.oauth_token && req.query.oauth_verifier && cookies.tw_req_token) {
+      const consumerKey = process.env.X_CONSUMER_KEY || process.env.X_CLIENT_ID!;
+      const consumerSecret = process.env.X_CONSUMER_SECRET || process.env.X_CLIENT_SECRET!;
+      const oauth = new OAuth({
+        consumer: { key: consumerKey, secret: consumerSecret },
+        signature_method: "HMAC-SHA1",
+        hash_function(base, key) { return crypto.createHmac("sha1", key).update(base).digest("base64"); },
+      });
+      const accessUrl = "https://api.twitter.com/oauth/access_token";
+      const data: any = { oauth_token: req.query.oauth_token as string, oauth_verifier: req.query.oauth_verifier as string };
+      const auth = oauth.toHeader(oauth.authorize({ url: accessUrl, method: "POST", data }));
+      const r = await fetch(accessUrl, {
+        method: "POST",
+        headers: { Authorization: auth.Authorization, "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(data),
+      });
+      const text = await r.text();
+      if (!r.ok) return res.status(400).send(text || "access_token failed");
+      const params = Object.fromEntries(text.split("&").map((kv) => { const [k, v] = kv.split("="); return [k, decodeURIComponent(v || "")]; }));
+      const twitterId = params.user_id as string | undefined;
+      if (!twitterId) throw new Error("no twitter id from oauth1");
+
+      const twHash = "0x" + crypto.createHash("sha256").update(`${twitterId}:${process.env.TW_SALT!}`).digest("hex");
+      const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+      res.setHeader("Set-Cookie", [
+        `tw_hash=${twHash}; HttpOnly; Path=/; SameSite=Lax${secure}`,
+        `tw_req_token=; Path=/; Max-Age=0${secure}`,
+        `tw_req_secret=; Path=/; Max-Age=0${secure}`,
+      ]);
+      res.redirect("/");
+      return;
+    }
+
+    // OAuth 2.0 branch
     const code = (req.query.code as string) || (req.body?.code as string);
     const state = (req.query.state as string) || (req.body?.state as string);
     if (!code || !state) throw new Error("missing code or state");
-    const cookies = Object.fromEntries(
-      (req.headers.cookie || "").split(";").map((s) => s.trim().split("="))
-    );
-
     if (!cookies.tw_state || state !== cookies.tw_state) throw new Error("bad state");
     if (!cookies.tw_verifier) throw new Error("missing verifier cookie");
 
