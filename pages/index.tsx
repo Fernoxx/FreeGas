@@ -2,7 +2,7 @@ import { useState } from "react";
 import { base } from "wagmi/chains";
 import { createWalletClient, custom, getContract, parseAbi, Hex } from "viem";
 
-const CONTRACT = (process.env.NEXT_PUBLIC_CONTRACT as `0x${string}`) || "0xc8ea0eb862d9a74270bfff9926d68d60653255db";
+const CONTRACT = "0xc8ea0eb862d9a74270bfff9926d68d60653255db" as const;
 const ABI = parseAbi([
   "function claim() external",
 ]);
