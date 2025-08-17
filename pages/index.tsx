@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { base } from "wagmi/chains";
-import { createWalletClient, createPublicClient, custom, getContract, parseAbi, Hex } from "viem";
+import { createWalletClient, custom, getContract, parseAbi, Hex } from "viem";
 
-const CONTRACT = (process.env.NEXT_PUBLIC_CONTRACT as `0x${string}`) || "0x4e07df426c1912af30b24595b1aa474118a0efc6";
+const CONTRACT = (process.env.NEXT_PUBLIC_CONTRACT as `0x${string}`) || "0xc8ea0eb862d9a74270bfff9926d68d60653255db";
 const ABI = parseAbi([
-  "function claim(uint256 amount,uint256 nonce,uint256 deadline,bytes32 twitterHash,bytes signature) external",
-  "function claimedAddress(address) view returns (bool)",
+  "function claim() external",
 ]);
 
 function pickAllowedProvider(): any | null {
@@ -55,32 +54,11 @@ export default function Page() {
       await ensureBase(provider);
 
       const wallet = createWalletClient({ chain: base, transport: custom(provider) });
-      const pub    = createPublicClient({ chain: base, transport: custom(provider) });
       const addr   = (await wallet.getAddresses())[0];
-
-      const hasTwitter = document.cookie.split(";").some(c => c.trim().startsWith("tw_hash="));
-      if (!hasTwitter) { window.location.href = "/api/x/start"; return; }
-
-      const r = await fetch("/api/claim-sig?wallet=" + addr, { credentials: "include" });
-      const payload = await r.json();
-      if (payload.error) { setNote(payload.error); return; }
-
-      const view = getContract({ address: CONTRACT as Hex, abi: ABI, client: pub });
-      const already = await view.read.claimedAddress([addr]);
-      if (already) { setNote("Already claimed with this wallet"); return; }
 
       const write = getContract({ address: CONTRACT as Hex, abi: ABI, client: wallet });
       setNote("Sending claim… confirm in wallet");
-      const tx = await write.write.claim(
-        [
-          BigInt(payload.amount),
-          BigInt(payload.nonce),
-          BigInt(payload.deadline),
-          payload.twitterHash as `0x${string}`,
-          payload.signature as `0x${string}`,
-        ],
-        { account: addr }
-      );
+      const tx = await write.write.claim({ account: addr });
       setNote("Sent. Tx " + tx);
     } catch (e:any) {
       setNote(e?.message || "Error");
