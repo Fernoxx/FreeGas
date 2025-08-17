@@ -10,20 +10,27 @@ async function exchangeToken(code: string, verifier: string) {
     code_verifier: verifier,
   });
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  if (process.env.X_CLIENT_SECRET) {
+    headers["Authorization"] =
+      "Basic " +
+      Buffer.from(`${process.env.X_CLIENT_ID!}:${process.env.X_CLIENT_SECRET!}`).toString(
+        "base64"
+      );
+  }
+
   const r = await fetch("https://api.twitter.com/2/oauth2/token", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization:
-        "Basic " +
-        Buffer.from(`${process.env.X_CLIENT_ID!}:${process.env.X_CLIENT_SECRET!}`).toString(
-          "base64"
-        ),
-    },
+    headers,
     body,
   });
-  if (!r.ok) throw new Error("token exchange failed");
-  return r.json() as Promise<{ access_token: string }>;
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`token exchange failed: ${text}`);
+  }
+  return r.json() as Promise<{ access_token: string; id_token?: string }>;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -36,12 +43,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!cookies.tw_state || state !== cookies.tw_state) throw new Error("bad state");
 
     const tok = await exchangeToken(code, cookies.tw_verifier);
-    const me = (await fetch("https://api.twitter.com/2/users/me", {
-      headers: { Authorization: `Bearer ${tok.access_token}` },
-    }).then((r) => r.json())) as any;
-
-    const twitterId = me?.data?.id as string;
-    if (!twitterId) throw new Error("no twitter id");
+    let twitterId: string | undefined;
+    if (tok.id_token) {
+      const [, payloadB64] = tok.id_token.split(".");
+      try {
+        const payload = JSON.parse(Buffer.from(payloadB64, "base64").toString("utf8"));
+        twitterId = payload.sub as string | undefined;
+      } catch {}
+    }
+    if (!twitterId) {
+      const meRes = await fetch("https://api.twitter.com/2/users/me", {
+        headers: { Authorization: `Bearer ${tok.access_token}` },
+      });
+      const me = (await meRes.json()) as any;
+      twitterId = me?.data?.id as string | undefined;
+      if (!twitterId) throw new Error(`no twitter id: ${JSON.stringify(me)}`);
+    }
 
     const twHash =
       "0x" +

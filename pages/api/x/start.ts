@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     response_type: "code",
     client_id: process.env.X_CLIENT_ID!,
     redirect_uri: `${process.env.BASE_URL}/api/x/callback`,
-    scope: "users.read offline.access",
+    scope: "openid users.read offline.access",
     state,
     code_challenge: challenge,
     code_challenge_method: "S256",
