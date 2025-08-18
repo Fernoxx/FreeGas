@@ -26,6 +26,7 @@ function pickAllowedProvider(): any | null {
 
 export default function Page() {
   const [note, setNote] = useState("");
+  const [showOptions, setShowOptions] = useState(false);
 
   async function ensureBase(provider: any) {
     try {
@@ -54,7 +55,7 @@ export default function Page() {
     }
   }
 
-  async function onClick() {
+  async function onClickEth() {
     setNote("");
     try {
       const provider = pickAllowedProvider();
@@ -87,6 +88,14 @@ export default function Page() {
       setNote(e?.message || "Error");
     }
   }
+  
+  function onClickCelo() {
+    setNote("CELO faucet coming soon");
+  }
+
+  function onClickMon() {
+    setNote("MON faucet coming soon");
+  }
 
   return (
     <div style={{
@@ -97,21 +106,100 @@ export default function Page() {
       justifyContent: "center",
       fontFamily: "Inter, system-ui, Arial",
     }}>
-      <button
-        onClick={onClick}
-        style={{
-          background: "#5B21B6",
-          color: "white",
-          padding: "18px 28px",
+      {!showOptions && (
+        <button
+          onClick={() => setShowOptions(true)}
+          style={{
+            background: "#5B21B6",
+            color: "white",
+            padding: "18px 28px",
+            borderRadius: 16,
+            border: "none",
+            fontSize: 20,
+            cursor: "pointer",
+            boxShadow: "0 6px 18px rgba(0,0,0,0.15)",
+          }}
+        >
+          Free Gas
+        </button>
+      )}
+
+      {showOptions && (
+        <div style={{
+          background: "white",
+          padding: 24,
           borderRadius: 16,
-          border: "none",
-          fontSize: 20,
-          cursor: "pointer",
-          boxShadow: "0 6px 18px rgba(0,0,0,0.15)",
-        }}
-      >
-        Free Gas
-      </button>
+          boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
+          minWidth: 320,
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+          alignItems: "stretch",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: "#111827" }}>Choose token</div>
+            <button
+              onClick={() => setShowOptions(false)}
+              style={{
+                background: "transparent",
+                color: "#6B7280",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 14,
+              }}
+            >
+              Close
+            </button>
+          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              onClick={onClickEth}
+              style={{
+                flex: 1,
+                background: "#0EA5E9",
+                color: "white",
+                padding: "12px 16px",
+                borderRadius: 12,
+                border: "none",
+                fontSize: 16,
+                cursor: "pointer",
+              }}
+            >
+              ETH
+            </button>
+            <button
+              onClick={onClickCelo}
+              style={{
+                flex: 1,
+                background: "#22C55E",
+                color: "white",
+                padding: "12px 16px",
+                borderRadius: 12,
+                border: "none",
+                fontSize: 16,
+                cursor: "pointer",
+              }}
+            >
+              CELO
+            </button>
+            <button
+              onClick={onClickMon}
+              style={{
+                flex: 1,
+                background: "#F59E0B",
+                color: "white",
+                padding: "12px 16px",
+                borderRadius: 12,
+                border: "none",
+                fontSize: 16,
+                cursor: "pointer",
+              }}
+            >
+              MON
+            </button>
+          </div>
+        </div>
+      )}
       <div style={{ position: "fixed", bottom: 20, width: "100%", textAlign: "center", color: "#4B5563" }}>
         {note}
       </div>
